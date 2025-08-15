@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal GPT Chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: #111111;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            background: #0d0d0d;
+        }
+
+        .sidebar-title {
+            color: #00ff00;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .new-chat-btn {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            color: #00ff00;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .new-chat-btn:hover {
+            background: #333;
+            border-color: #00ff00;
+        }
+
+        .chat-sessions {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .session-item {
+            padding: 12px 15px;
+            margin-bottom: 5px;
+            background: #0d0d0d;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .session-item:hover {
+            background: #1a1a1a;
+            border-color: #333;
+        }
+
+        .session-item.active {
+            background: #1a1a1a;
+            border-color: #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .session-item.streaming {
+            border-color: #ffaa00;
+            background: #1a1a1a;
+        }
+
+        .session-item.active.streaming {
+            border-color: #00ff00;
+            background: #1a1a1a;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .active-indicator {
+            color: #00ff00;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        .streaming-indicator {
+            color: #ffaa00;
+            margin-left: 5px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .session-title {
+            font-size: 12px;
+            color: #00ff00;
+            margin-bottom: 4px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-meta {
+            font-size: 10px;
+            color: #666;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .delete-session {
+            color: #ff4444;
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 2px;
+            transition: background 0.2s ease;
+        }
+
+        .delete-session:hover {
+            background: #330000;
+        }
+
+        /* Main Chat Area */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0a0a0a;
+        }
+
+        .chat-header {
+            background: #111111;
+            border-bottom: 1px solid #333;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-header-title {
+            color: #00ff00;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .chat-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #666;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: pulse 2s infinite;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #0a0a0a;
+            position: relative;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message-header {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .message.user .message-header {
+            color: #4488ff;
+        }
+
+        .message.ai .message-header {
+            color: #00ff00;
+        }
+
+        .message-content {
+            font-size: 13px;
+            line-height: 1.6;
+            padding-left: 20px;
+            border-left: 2px solid #333;
+            position: relative;
+        }
+
+        .message.user .message-content {
+            border-left-color: #4488ff;
+            color: #ccc;
+        }
+
+        .message.ai .message-content {
+            border-left-color: #00ff00;
+            color: #e0e0e0;
+        }
+
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #00ff00;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+            vertical-align: text-bottom;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+            font-size: 11px;
+            padding-left: 20px;
+            border-left: 2px solid #666;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+        }
+
+        .typing-dots span {
+            width: 4px;
+            height: 4px;
+            background: #666;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        .chat-input-container {
+            padding: 20px;
+            background: #111111;
+            border-top: 1px solid #333;
+        }
+
+        .input-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            transition: border-color 0.2s ease;
+        }
+
+        .input-line:focus-within {
+            border-color: #00ff00;
+        }
+
+        .input-prompt {
+            color: #00ff00;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #e0e0e0;
+            font-family: inherit;
+            font-size: 13px;
+            outline: none;
+            resize: none;
+            min-height: 20px;
+            max-height: 100px;
+            line-height: 1.4;
+        }
+
+        .chat-input::placeholder {
+            color: #666;
+        }
+
+        .send-btn {
+            background: transparent;
+            border: 1px solid #333;
+            color: #00ff00;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+
+        .send-btn:hover {
+            border-color: #00ff00;
+            background: #1a1a1a;
+        }
+
+        .send-btn:disabled {
+            color: #666;
+            border-color: #333;
+            cursor: not-allowed;
+            background: transparent;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes typing {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Scrollbar styling */
+        .chat-messages::-webkit-scrollbar,
+        .chat-sessions::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track,
+        .chat-sessions::-webkit-scrollbar-track {
+            background: #111;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb,
+        .chat-sessions::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover,
+        .chat-sessions::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 250px;
+                position: absolute;
+                left: -250px;
+                height: 100%;
+                z-index: 1000;
+                transition: left 0.3s ease;
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+
+            .chat-container {
+                width: 100%;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+                background: transparent;
+                border: 1px solid #333;
+                color: #00ff00;
+                padding: 8px;
+                border-radius: 4px;
+                cursor: pointer;
+                margin-right: 10px;
+            }
+        }
+
+        .mobile-menu-btn {
+            display: none;
+        }
+
+        /* Welcome message styling */
+        .welcome-message {
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            border: 1px dashed #333;
+            border-radius: 4px;
+            margin: 20px;
+        }
+
+        .welcome-message h3 {
+            color: #00ff00;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        /* UUID display */
+        .session-uuid {
+            font-size: 9px;
+            color: #444;
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">
+                <span>🔗</span> Chat Sessions
+            </div>
+            <button class="new-chat-btn" onclick="createNewChat()">
+                <span>+</span> New Chat
+            </button>
+        </div>
+        <div class="chat-sessions" id="chatSessions">
+            <!-- Sessions will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Main Chat Area -->
+    <div class="chat-container">
+        <div class="chat-header">
+            <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+            <div class="chat-header-title" id="chatTitle">Terminal GPT</div>
+            <div class="chat-status">
+                <div class="status-dot"></div>
+                <span>ONLINE</span>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <h3>Welcome to Terminal GPT</h3>
+                <p>Create a new chat or select an existing session from the sidebar to begin.</p>
+                <p>Type your messages in the terminal-style input below.</p>
+            </div>
+        </div>
+        
+        <div class="chat-input-container">
+            <div class="input-line">
+                <span class="input-prompt">user@gpt:~$</span>
+                <textarea 
+                    class="chat-input" 
+                    id="messageInput" 
+                    placeholder="Enter your command..."
+                    rows="1"
+                    disabled
+                ></textarea>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled>
+                    SEND
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentSessionId = null;
+        let isGenerating = false;
+        let currentStreamingMessage = null;
+        let streamingSessions = new Set(); // Track which sessions are currently streaming
+        
+        // Storage keys for persistence
+        const STORAGE_KEYS = {
+            CURRENT_SESSION: 'gpt_current_session',
+            INPUT_TEXT_PREFIX: 'gpt_input_text_'  // Will be combined with session ID
+        };
+
+        // Persistence functions
+        function saveCurrentSession(sessionId) {
+            if (sessionId) {
+                localStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, sessionId);
+            } else {
+                localStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
+            }
+        }
+
+        function loadCurrentSession() {
+            return localStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
+        }
+
+        function saveInputText(text, sessionId = currentSessionId) {
+            if (!sessionId) return; // Don't save if no active session
+            
+            const key = STORAGE_KEYS.INPUT_TEXT_PREFIX + sessionId;
+            if (text) {
+                localStorage.setItem(key, text);
+            } else {
+                localStorage.removeItem(key);
+            }
+        }
+
+        function loadInputText(sessionId = currentSessionId) {
+            if (!sessionId) return '';
+            
+            const key = STORAGE_KEYS.INPUT_TEXT_PREFIX + sessionId;
+            return localStorage.getItem(key) || '';
+        }
+
+        function clearInputTextForSession(sessionId) {
+            if (!sessionId) return;
+            
+            const key = STORAGE_KEYS.INPUT_TEXT_PREFIX + sessionId;
+            localStorage.removeItem(key);
+        }
+
+        // Debounced save function for input text
+        let saveInputTimeout;
+        function debouncedSaveInput(text) {
+            if (!currentSessionId) return; // Don't save if no active session
+            
+            clearTimeout(saveInputTimeout);
+            saveInputTimeout = setTimeout(() => {
+                saveInputText(text, currentSessionId);
+            }, 300); // Save after 300ms of no typing
+        }
+
+        // Auto-resize textarea and save input text
+        const messageInput = document.getElementById('messageInput');
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+            
+            // Save input text as user types
+            debouncedSaveInput(this.value);
+        });
+
+        // Send message on Enter (but allow Shift+Enter for new lines)
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        function formatTime(timestamp) {
+            return new Date(timestamp).toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            
+            if (messageDate.getTime() === today.getTime()) {
+                return 'Today';
+            } else if (messageDate.getTime() === today.getTime() - 86400000) {
+                return 'Yesterday';
+            } else {
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
+        }
+
+        function addMessage(type, content, timestamp = null) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const time = timestamp ? formatTime(timestamp) : formatTime(new Date().toISOString());
+            const userIcon = type === 'user' ? '👤' : '🤖';
+            const userName = type === 'user' ? 'user' : 'assistant';
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span>${userIcon} ${userName}</span>
+                    <span>${time}</span>
+                </div>
+                <div class="message-content">${content}</div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        function addTypingIndicator() {
+            const chatMessages = document.getElementById('chatMessages');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message ai';
+            typingDiv.id = 'typingIndicator';
+            
+            typingDiv.innerHTML = `
+                <div class="message-header">
+                    <span>🤖 assistant</span>
+                    <span>${formatTime(new Date().toISOString())}</span>
+                </div>
+                <div class="typing-indicator">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <span>Thinking...</span>
+                </div>
+            `;
+            
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return typingDiv;
+        }
+
+        function removeTypingIndicator() {
+            const typingIndicator = document.getElementById('typingIndicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+
+        async function sendMessage() {
+            if (isGenerating || !currentSessionId) return;
+            
+            const input = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            addMessage('user', message);
+            
+            // Clear input and disable button
+            input.value = '';
+            input.style.height = 'auto';
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'SENDING';
+            isGenerating = true;
+            
+            // Clear saved input text since message is being sent
+            saveInputText('', currentSessionId);
+            
+            // Mark this session as streaming
+            streamingSessions.add(currentSessionId);
+            
+            // Add typing indicator
+            const typingIndicator = addTypingIndicator();
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        message: message,
+                        session_id: currentSessionId 
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                // Remove typing indicator
+                removeTypingIndicator();
+                
+                // Create AI message container with terminal cursor
+                const aiMessageDiv = addMessage('ai', '<span class="terminal-cursor"></span>');
+                const messageContent = aiMessageDiv.querySelector('.message-content');
+                let aiResponse = '';
+                
+                // Read the stream
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.type === 'token') {
+                                    aiResponse += data.token;
+                                    messageContent.innerHTML = aiResponse + '<span class="terminal-cursor"></span>';
+                                    
+                                    // Auto-scroll
+                                    const chatMessages = document.getElementById('chatMessages');
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                } else if (data.type === 'complete') {
+                                    // Remove cursor when complete
+                                    messageContent.innerHTML = aiResponse;
+                                }
+                            } catch (e) {
+                                // Ignore JSON parse errors
+                            }
+                        }
+                    }
+                }
+                
+                // Remove streaming status for this session
+                streamingSessions.delete(currentSessionId);
+                
+                // Update session title if this was the first message
+                if (aiResponse && aiResponse.trim()) {
+                    const firstLine = aiResponse.split('\n')[0].trim();
+                    const shortTitle = firstLine.length > 50 ? firstLine.substring(0, 50) + '...' : firstLine;
+                    updateSessionTitle(currentSessionId, shortTitle);
+                }
+                
+                // Refresh sessions to update last_updated
+                loadSessions();
+                
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage('ai', '❌ Error: Connection failed. Please check the server and try again.');
+                console.error('Error:', error);
+            } finally {
+                // Remove streaming status for this session
+                streamingSessions.delete(currentSessionId);
+                
+                // Re-enable input
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'SEND';
+                isGenerating = false;
+                input.focus();
+            }
+        }
+
+        async function createNewChat() {
+            try {
+                // Save current input text for the old session before switching
+                if (currentSessionId) {
+                    const messageInput = document.getElementById('messageInput');
+                    saveInputText(messageInput.value, currentSessionId);
+                }
+                
+                const response = await fetch('/api/session', { method: 'POST' });
+                const data = await response.json();
+                
+                currentSessionId = data.session_id;
+                
+                // Save current session to localStorage
+                saveCurrentSession(currentSessionId);
+                
+                // Clear chat messages
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML = '';
+                
+                // Enable input and clear it for new session
+                const messageInput = document.getElementById('messageInput');
+                const sendBtn = document.getElementById('sendBtn');
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.value = ''; // Clear input for new session
+                messageInput.style.height = 'auto';
+                messageInput.focus();
+                
+                // Update title
+                document.getElementById('chatTitle').textContent = 'New Chat';
+                
+                // Refresh sessions list
+                loadSessions();
+                
+            } catch (error) {
+                console.error('Error creating new chat:', error);
+            }
+        }
+
+        async function loadSessions() {
+            try {
+                const response = await fetch('/api/sessions');
+                const sessions = await response.json();
+                
+                const sessionsContainer = document.getElementById('chatSessions');
+                sessionsContainer.innerHTML = '';
+                
+                for (const session of sessions) {
+                    const sessionDiv = document.createElement('div');
+                    const isActive = session.id === currentSessionId;
+                    const isStreaming = streamingSessions.has(session.id);
+                    
+                    sessionDiv.className = `session-item ${isActive ? 'active' : ''} ${isStreaming ? 'streaming' : ''}`;
+                    sessionDiv.onclick = () => loadSession(session.id);
+                    
+                    const streamingIndicator = isStreaming ? '<span class="streaming-indicator">🔄</span>' : '';
+                    const activeIndicator = isActive ? '<span class="active-indicator">▶️</span>' : '';
+                    
+                    sessionDiv.innerHTML = `
+                        <div class="session-title">
+                            ${activeIndicator} ${session.title} ${streamingIndicator}
+                        </div>
+                        <div class="session-meta">
+                            <span>${formatDate(session.last_updated)} • ${session.message_count} msgs</span>
+                            <span class="delete-session" onclick="deleteSession('${session.id}', event)">✕</span>
+                        </div>
+                        <div class="session-uuid">${session.id}</div>
+                    `;
+                    
+                    sessionsContainer.appendChild(sessionDiv);
+                }
+                
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+            }
+        }
+
+        async function loadSession(sessionId, skipSave = false) {
+            // Allow switching even during streaming, but show warning if current session is streaming
+            if (isGenerating && currentSessionId === sessionId) {
+                // Don't allow switching to the same session if it's currently generating
+                return;
+            }
+            
+            // Allow switching directly even from streaming sessions
+            // No warning needed - just switch and let streaming continue in background
+            
+            try {
+                // Save current input text for the old session before switching
+                if (currentSessionId && currentSessionId !== sessionId && !skipSave) {
+                    const messageInput = document.getElementById('messageInput');
+                    saveInputText(messageInput.value, currentSessionId);
+                }
+                
+                currentSessionId = sessionId;
+                
+                // Save current session to localStorage (unless this is initial restore)
+                if (!skipSave) {
+                    saveCurrentSession(sessionId);
+                }
+                
+                // Update active session in sidebar
+                document.querySelectorAll('.session-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                // Find and activate the session item
+                const sessionItems = document.querySelectorAll('.session-item');
+                sessionItems.forEach(item => {
+                    if (item.onclick.toString().includes(sessionId)) {
+                        item.classList.add('active');
+                    }
+                });
+                
+                // Load session history
+                const response = await fetch(`/api/history/${sessionId}`);
+                const history = await response.json();
+                
+                // Clear and load messages
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML = '';
+                
+                for (const entry of history) {
+                    addMessage(entry.type, entry.message, entry.timestamp);
+                }
+                
+                // Enable input
+                const messageInput = document.getElementById('messageInput');
+                const sendBtn = document.getElementById('sendBtn');
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                
+                // Load saved input text for this specific session
+                const savedInput = loadInputText(sessionId);
+                messageInput.value = savedInput;
+                
+                // Trigger resize if there's content
+                if (savedInput) {
+                    messageInput.style.height = 'auto';
+                    messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
+                } else {
+                    messageInput.style.height = 'auto';
+                }
+                
+                messageInput.focus();
+                
+                // Update title
+                const sessions = await fetch('/api/sessions').then(r => r.json());
+                const session = sessions.find(s => s.id === sessionId);
+                if (session) {
+                    document.getElementById('chatTitle').textContent = session.title;
+                }
+                
+            } catch (error) {
+                console.error('Error loading session:', error);
+            }
+        }
+
+        async function deleteSession(sessionId, event) {
+            event.stopPropagation();
+            
+            if (confirm('Delete this chat session?')) {
+                try {
+                    await fetch(`/api/session/${sessionId}`, { method: 'DELETE' });
+                    
+                    if (sessionId === currentSessionId) {
+                        // Clear current session
+                        currentSessionId = null;
+                        saveCurrentSession(null); // Clear saved session
+                        
+                        const chatMessages = document.getElementById('chatMessages');
+                        chatMessages.innerHTML = `
+                            <div class="welcome-message">
+                                <h3>Welcome to Terminal GPT</h3>
+                                <p>Create a new chat or select an existing session from the sidebar to begin.</p>
+                                <p>Type your messages in the terminal-style input below.</p>
+                            </div>
+                        `;
+                        
+                        // Disable input
+                        const messageInput = document.getElementById('messageInput');
+                        const sendBtn = document.getElementById('sendBtn');
+                        messageInput.disabled = true;
+                        sendBtn.disabled = true;
+                        messageInput.value = ''; // Clear input
+                        messageInput.style.height = 'auto';
+                        
+                        document.getElementById('chatTitle').textContent = 'Terminal GPT';
+                    }
+                    
+                    // Clear saved input text for the deleted session
+                    clearInputTextForSession(sessionId);
+                    
+                    loadSessions();
+                    
+                } catch (error) {
+                    console.error('Error deleting session:', error);
+                }
+            }
+        }
+
+        // Function to update session title in sidebar
+        function updateSessionTitle(sessionId, newTitle) {
+            const sessionItems = document.querySelectorAll('.session-item');
+            sessionItems.forEach(item => {
+                if (item.onclick.toString().includes(sessionId)) {
+                    const titleElement = item.querySelector('.session-title');
+                    if (titleElement) {
+                        const activeIndicator = item.classList.contains('active') ? '<span class="active-indicator">▶️</span>' : '';
+                        const streamingIndicator = item.classList.contains('streaming') ? '<span class="streaming-indicator">🔄</span>' : '';
+                        titleElement.innerHTML = `${activeIndicator} ${newTitle} ${streamingIndicator}`;
+                    }
+                }
+            });
+        }
+
+        // Initialize app
+        window.addEventListener('load', async () => {
+            await loadSessions();
+            
+            // Restore previous session if exists
+            const savedSessionId = loadCurrentSession();
+            if (savedSessionId) {
+                // Check if the session still exists
+                try {
+                    const response = await fetch('/api/sessions');
+                    const sessions = await response.json();
+                    const sessionExists = sessions.find(s => s.id === savedSessionId);
+                    
+                    if (sessionExists) {
+                        // Restore the session
+                        await loadSession(savedSessionId, true); // true = skip saving to localStorage
+                    } else {
+                        // Session no longer exists, clear saved state
+                        saveCurrentSession(null);
+                        clearInputTextForSession(savedSessionId);
+                    }
+                } catch (error) {
+                    console.error('Error checking saved session:', error);
+                    // Clear invalid saved state
+                    saveCurrentSession(null);
+                    if (savedSessionId) {
+                        clearInputTextForSession(savedSessionId);
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+
