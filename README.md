@@ -2,6 +2,14 @@
 
 A beautiful, terminal-inspired chat interface for your trained GPT model with real-time streaming and session management.
 
+![Terminal GPT Interface](screenshot.png)
+
+*The Terminal GPT interface showing the dark theme, sidebar with chat sessions, and terminal-style input prompt.*
+
+![Terminal GPT Chat Session](screenshot2.png)
+
+*An active chat session showing user interaction, AI response streaming, and session management with multiple chat sessions in the sidebar.*
+
 ## 🚀 Features
 
 ### 🖥️ Terminal-Style Design
